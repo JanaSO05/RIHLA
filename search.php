@@ -33,4 +33,6 @@ $results = searchByName($term);
 
 <?php endif; ?>
 
+<?php include 'views/guide.php'; ?>
+
 <?php include 'views/footer.php'; ?>

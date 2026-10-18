@@ -26,4 +26,6 @@ $list = getDestinationsByJourney($journeyKey);
   <?php endforeach; ?>
 </ul>
 
+<?php include 'views/guide.php'; ?>
+
 <?php include 'views/footer.php'; ?>
