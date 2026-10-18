@@ -29,4 +29,6 @@ $landmarkList = getLandmarks($id);
   <p><?= $lm['desc'] ?></p>
 <?php endforeach; ?>
 
+<?php $guideDestinationID = $id; include 'views/guide.php'; ?>
+
 <?php include 'views/footer.php'; ?>

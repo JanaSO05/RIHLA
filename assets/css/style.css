@@ -1,0 +1,272 @@
+/* RIHLA - design for all pages (colours from the logo)
+   It styles the pages as they are, without changing their HTML. */
+
+body {
+  margin: 0;
+  font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  font-size: 18px; /* body text at least 16px (our NFR) */
+  line-height: 1.7;
+  color: #4a3420;
+  background: #f7f2e7;
+}
+
+a {
+  color: #1a8f9e;
+}
+
+hr {
+  display: none; /* the coloured line under the header replaces it */
+}
+
+/* ---------- header ---------- */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 5%;
+  background: #fffaf0;
+  border-bottom: 6px solid;
+  border-image: linear-gradient(to left, #1f6e4a 25%, #12a3b4 25% 50%, #f26b3a 50% 75%, #f6b62b 75%) 1;
+}
+
+/* the logo next to the site name (click it to go to the home page) */
+header h1 {
+  margin: 0;
+}
+
+header h1 a {
+  display: block;
+  padding-right: 70px;
+  min-height: 60px;
+  line-height: 60px;
+  color: #1a8f9e;
+  text-decoration: none;
+  background: url("../images/rihla-logo.png") no-repeat right center;
+  background-size: 55px;
+}
+
+nav {
+  font-size: 0; /* hides the | between the links */
+}
+
+nav a {
+  font-size: 17px;
+  font-weight: bold;
+  color: #4a3420;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+nav a:hover {
+  background: #fff1d1;
+}
+
+/* ---------- page ---------- */
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px 16px 120px; /* space at the bottom for the guide button */
+}
+
+main h1 {
+  color: #1a8f9e;
+}
+
+main h2 {
+  color: #f26b3a;
+}
+
+/* the back link at the top of the page */
+main > a:first-child {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: bold;
+  background: white;
+  padding: 4px 14px;
+  border-radius: 20px;
+}
+
+/* ---------- home page: the journey buttons ---------- */
+h2 > a[href*="journey="] {
+  display: inline-block;
+  min-width: 220px;
+  padding: 14px 24px;
+  border-radius: 40px;
+  color: white;
+  font-size: 22px;
+  text-align: center;
+  text-decoration: none;
+}
+
+h2 > a[href*="journey=land"] {
+  background: #d38a3a;
+}
+
+h2 > a[href*="journey=sea"] {
+  background: #12a3b4;
+}
+
+h2 > a[href*="journey=land"]::before {
+  content: "🏜️ ";
+}
+
+h2 > a[href*="journey=sea"]::before {
+  content: "🌊 ";
+}
+
+h2 > a[href*="journey="]:hover {
+  transform: scale(1.05);
+}
+
+/* ---------- lists of destinations and search results: cards ---------- */
+main ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+main li {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  border-top: 6px solid #f6b62b;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+main li a {
+  font-size: 21px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+/* ---------- landmarks: name (h3) + text (p) as one card ---------- */
+main h3 {
+  margin: 16px 0 0;
+  padding: 12px 16px 0;
+  background: white;
+  color: #1a8f9e;
+  border-top: 6px solid #f6b62b;
+  border-radius: 16px 16px 0 0;
+}
+
+main h3 + p {
+  margin: 0;
+  padding: 4px 16px 14px;
+  background: white;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- forms ---------- */
+input[type="text"],
+input[type="password"] {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #f3e3c3;
+  border-radius: 12px;
+}
+
+main button {
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  background: #f6b62b;
+  color: #4a3420;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+main button:hover {
+  background: #f26b3a;
+  color: white;
+}
+
+/* ---------- footer ---------- */
+footer {
+  text-align: center;
+  font-size: 15px;
+  color: #8a7560;
+}
+
+/* small screens */
+@media (max-width: 600px) {
+  header {
+    justify-content: center;
+  }
+  nav a {
+    padding: 6px 8px;
+    font-size: 15px;
+  }
+}
+
+/* ---------- home page video ---------- */
+main:has(.home-video) {
+  text-align: center; /* centre the title, the video and the buttons */
+}
+
+.home-video {
+  display: block;
+  width: 100%;
+  max-width: 960px;        /* not bigger than the video itself, so it stays sharp */
+  box-sizing: border-box;  /* the white border stays inside the width */
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin: 10px auto 24px;
+  border: 6px solid white;
+  border-radius: 24px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  background: #fffaf0;
+}
+
+main:has(.home-video) h2 {
+  display: inline-block;
+  margin: 0 8px 12px;
+}
+
+/* ---------- login page ---------- */
+form[action="login.php"] {
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 24px;
+  background: white;
+  border-top: 6px solid #12a3b4;
+  border-radius: 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  text-align: right;
+}
+
+form[action="login.php"] label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+form[action="login.php"] input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+form[action="login.php"] button {
+  width: 100%;
+  font-size: 18px;
+}
+
+main:has(form[action="login.php"]) {
+  text-align: center; /* centre the title and the error message */
+}
+
+/* the error message under the form */
+form[action="login.php"] + p {
+  max-width: 380px;
+  margin: 14px auto;
+  padding: 10px;
+  background: #fde8e1;
+  color: #b23b12;
+  border-radius: 12px;
+}
