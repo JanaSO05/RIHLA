@@ -189,6 +189,7 @@ footer {
   color: #8a7560;
 }
 
+/* small screens */
 @media (max-width: 600px) {
   header {
     justify-content: center;
@@ -202,6 +203,7 @@ footer {
 /* ---------- home page video ---------- */
 main:has(.home-video) {
   text-align: center; 
+}
 
 .home-video {
   display: block;
