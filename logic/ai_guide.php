@@ -1,11 +1,10 @@
 <?php
-
-
 // The guide answers only from the RIHLA content.
 
 require_once __DIR__ . '/journeys.php';
 require_once __DIR__ . '/config.php';
 
+// Get the content of the destination and its landmarks
 function getGuideSections($destinationID) {
 
     $sections = [];
@@ -25,18 +24,16 @@ function getGuideSections($destinationID) {
     return $sections;
 }
 
+// Build the text that we send to the AI service
 function makePrompt($question, $sections, $context) {
 
     $prompt = "You are a cultural guide for Saudi children aged 7 to 11.\n";
     $prompt .= "Answer in short and simple Arabic.\n";
     $prompt .= "Use only the sections below.\n";
-    $prompt .= "Write the numbers of the sections you used, then | then the answer. Example: 2,3|answer\n";
     $prompt .= "If the answer is not in the sections, write NOT_FOUND\n\n";
 
-    $number = 1;
     foreach ($sections as $section) {
-        $prompt .= $number . ') ' . $section . "\n";
-        $number++;
+        $prompt .= "- " . $section . "\n";
     }
 
     $prompt .= "\nLast questions and answers:\n" . $context . "\n";
@@ -61,11 +58,12 @@ function callAIService($prompt) {
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);      
-    curl_setopt($ch, CURLOPT_TIMEOUT, $AI_TIME_LIMIT);   
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $AI_TIME_LIMIT);
     $response = curl_exec($ch);
     curl_close($ch);
 
+    // no reply in time
     if ($response === false) {
         return null;
     }
@@ -78,69 +76,40 @@ function callAIService($prompt) {
 
     $reply = $data['candidates'][0]['content']['parts'][0]['text'];
 
-    $reply = str_replace(['*', '`'], '', $reply);
+    $reply = str_replace('*', '', $reply);
 
     return trim($reply);
 }
 
-
-function isGrounded($reply, $sectionsCount) {
-
-    if ($reply == '' || strpos($reply, 'NOT_FOUND') !== false) {
-        return false;
-    }
-
-    if (strpos($reply, '|') === false) {
-        return false;
-    }
-
-    $parts   = explode('|', $reply, 2);   
-    $numbers = explode(',', $parts[0]);
-
-    foreach ($numbers as $n) {
-        $n = (int) trim($n);
-        if ($n < 1 || $n > $sectionsCount) {
-            return false;
-        }
-    }
-
-    if (trim($parts[1]) == '') {
-        return false;
-    }
-
-    return true;
-}
-
-// AskAIGuide
+// AskAIGuide: returns the answer and if it was found in the content
 function askAIGuide($destinationID, $question, $context) {
 
     if ($question == '') {
-        return 'اكتب سؤالك من فضلك ✏️';
+        return ['answer' => 'اكتب سؤالك من فضلك', 'found' => false];
     }
 
     $sections = getGuideSections($destinationID);
 
     if (count($sections) == 0) {
-        return 'لا توجد معلومات عن هذا المكان حتى الآن';
+        return ['answer' => 'لا توجد معلومات عن هذا المكان حتى الآن', 'found' => false];
     }
 
     $prompt = makePrompt($question, $sections, $context);
     $reply  = callAIService($prompt);
 
     if ($reply === null) {
-        return 'المرشد لا يستطيع الإجابة الآن، حاول مرة أخرى 🙏';
+        return ['answer' => 'المرشد لا يستطيع الإجابة الآن، حاول مرة أخرى', 'found' => false];
     }
 
-    if (!isGrounded($reply, count($sections))) {
+    if ($reply == '' || strpos($reply, 'NOT_FOUND') !== false) {
 
         if ($destinationID == 0) {
-            return 'أستطيع الإجابة فقط عن وجهات رحلة 😊';
+            return ['answer' => 'أستطيع الإجابة فقط عن وجهات رحلة', 'found' => false];
         }
 
         $destination = getDestination($destinationID);
-        return 'أستطيع الإجابة فقط عن أسئلة ' . $destination['name'] . ' 😊';
+        return ['answer' => 'أستطيع الإجابة فقط عن أسئلة ' . $destination['name'], 'found' => false];
     }
 
-    $parts = explode('|', $reply, 2);
-    return trim($parts[1]);
+    return ['answer' => $reply, 'found' => true];
 }
