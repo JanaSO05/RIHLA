@@ -263,3 +263,48 @@ form[action="login.php"] + p {
   color: #b23b12;
   border-radius: 12px;
 }
+/* ---------- login account selection ---------- */
+
+.account-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+form[action="login.php"] .account-option {
+  display: block;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+form[action="login.php"] .account-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.account-option span {
+  display: block;
+  padding: 15px;
+  border: 2px solid #f3e3c3;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.account-option input:checked + span {
+  background-color: #e0f5f5;
+  border-color: #239aaa;
+  color: #239aaa;
+}
+
+.account-option input:focus-visible + span {
+  outline: 3px solid #f6b62b;
+  outline-offset: 3px;
+}
+
+.account-option:hover span {
+  border-color: #239aaa;
+}
