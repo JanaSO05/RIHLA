@@ -50,7 +50,7 @@ function getAllDestinations() {
         4 => [
             'name' => 'جدة التاريخية',
             'desc' => 'جدة التاريخية منطقة تراثية تتميز بمبانيها القديمة.',
-            'journey' => 'sea',
+            'journey' => 'land',
             'landmarks' => [
                 [
                     'name' => 'بيت نصيف',
