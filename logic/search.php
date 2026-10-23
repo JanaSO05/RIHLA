@@ -30,7 +30,7 @@ function searchByName($term) {
         return $results;
     }
 
-    $destinations = getAllDestinations();
+    $destinations = getVisibleDestinations();
 
     foreach ($destinations as $id => $destination) {
 
