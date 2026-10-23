@@ -9,4 +9,4 @@ $context       = mb_substr($_POST['context'] ?? '', 0, 1500);
 $answer = askAIGuide($destinationID, $question, $context);
 
 header('Content-Type: application/json; charset=utf-8');
-echo json_encode(['answer' => $answer]);
+echo json_encode($answer);
