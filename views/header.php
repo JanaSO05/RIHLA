@@ -1,4 +1,9 @@
 <?php
+
+function e($text) {
+    return htmlspecialchars($text ?? '', ENT_QUOTES, 'UTF-8');
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -27,14 +32,14 @@ $isAdminView = $role === 'admin' && ($_SESSION['view'] ?? 'admin') === 'admin';
 
 <header <?= $isLoginPage ? 'style="justify-content: flex-start;"' : '' ?>>
 
-        <h1>
-    <?php if ($isLoginPage): ?>
+    <h1>
+        <?php if ($isLoginPage): ?>
 
-        <a style="pointer-events: none; cursor: default;">
-            رحلة
-        </a>
+            <a style="pointer-events: none; cursor: default;">
+                رحلة
+            </a>
 
-    <?php else: ?>
+        <?php else: ?>
 
             <a href="<?= $isAdminView ? 'admin_dashboard.php' : 'index.php' ?>">
                 رحلة
