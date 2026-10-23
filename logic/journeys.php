@@ -1,5 +1,9 @@
 <?php
 
+// The journey manager. It asks the data layer for the destinations and
+// never reads the file itself.
+require_once __DIR__ . '/../data/destinations.php';
+
 // Available journeys
 function getJourneys() {
     return [
@@ -8,78 +12,51 @@ function getJourneys() {
     ];
 }
 
-// Destinations and landmarks
+// All destinations, including the hidden ones.
+// The administrator pages use this one.
 function getAllDestinations() {
-    return [
-        1 => [
-            'name' => 'الدرعية',
-            'desc' => 'الدرعية موقع تاريخي مهم في المملكة العربية السعودية.',
-            'journey' => 'land',
-            'landmarks' => [
-                [
-                    'name' => 'حي الطريف',
-                    'desc' => 'حي تاريخي يقع في الدرعية.'
-                ]
-            ]
-        ],
-
-        2 => [
-            'name' => 'العلا',
-            'desc' => 'العلا منطقة تتميز بتاريخها ومعالمها الأثرية.',
-            'journey' => 'land',
-            'landmarks' => [
-                [
-                    'name' => 'الحجر',
-                    'desc' => 'موقع أثري مشهور في العلا.'
-                ]
-            ]
-        ],
-
-        3 => [
-            'name' => 'البحر الأحمر',
-            'desc' => 'البحر الأحمر يتميز ببيئته البحرية المتنوعة.',
-            'journey' => 'sea',
-            'landmarks' => [
-                [
-                    'name' => 'الشعاب المرجانية',
-                    'desc' => 'تعيش في الشعاب المرجانية كائنات بحرية متنوعة.'
-                ]
-            ]
-        ],
-
-        4 => [
-            'name' => 'جدة التاريخية',
-            'desc' => 'جدة التاريخية منطقة تراثية تتميز بمبانيها القديمة.',
-            'journey' => 'land',
-            'landmarks' => [
-                [
-                    'name' => 'بيت نصيف',
-                    'desc' => 'أحد المباني التاريخية في جدة.'
-                ]
-            ]
-        ]
-    ];
+    return readDestinations();
 }
 
-// Get destinations belonging to a journey
-function getDestinationsByJourney($journeyKey) {
+// Save the destinations after the administrator changes them
+function saveAllDestinations($destinations) {
+    writeDestinations($destinations);
+}
+
+// Only the destinations that children are allowed to see.
+// A hidden destination stays in the data but is not returned here.
+function getVisibleDestinations() {
+
     return array_filter(
         getAllDestinations(),
-        function($destination) use ($journeyKey) {
+        function ($destination) {
+            return ($destination['status'] ?? 'published') === 'published';
+        }
+    );
+}
+
+// Get the visible destinations of one journey
+function getDestinationsByJourney($journeyKey) {
+
+    return array_filter(
+        getVisibleDestinations(),
+        function ($destination) use ($journeyKey) {
             return $destination['journey'] === $journeyKey;
         }
     );
 }
 
-// Get one destination by ID
+// Get one visible destination by ID
 function getDestination($id) {
-    $destinations = getAllDestinations();
+
+    $destinations = getVisibleDestinations();
 
     return $destinations[$id] ?? null;
 }
 
-// Get landmarks for a destination
+// Get the landmarks of a destination
 function getLandmarks($destinationId) {
+
     $destination = getDestination($destinationId);
 
     return $destination['landmarks'] ?? [];
