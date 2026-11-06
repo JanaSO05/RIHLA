@@ -7,178 +7,91 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
-$message = '';
-$imagePath = '';
+require_once 'logic/content_admin.php';
 
-// Upload image
+$errors = [];
+$target = $_POST['target'] ?? '';
+
+// upload and attach the image
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $destination = $_POST['destination'] ?? '';
-    $landmark = $_POST['landmark'] ?? '';
-
-    if ($destination !== '' && $landmark !== '' && isset($_FILES['image'])) {
-
-        $image = $_FILES['image'];
-
-        if ($image['error'] === UPLOAD_ERR_OK) {
-
-            // Check image size (maximum 5 MB)
-            if ($image['size'] <= 5 * 1024 * 1024) {
-
-                // Check actual image type
-                $imageInfo = getimagesize($image['tmp_name']);
-                $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
-                if ($imageInfo !== false && in_array($imageInfo['mime'], $allowedTypes, true)) {
-
-                    $extensions = [
-                        'image/jpeg' => 'jpg',
-                        'image/png' => 'png',
-                        'image/webp' => 'webp'
-                    ];
-
-                    $extension = $extensions[$imageInfo['mime']];
-
-                    // Create a unique filename
-                    $fileName = bin2hex(random_bytes(12)) . '.' . $extension;
-
-                    $uploadFolder = __DIR__ . '/assets/images/';
-                    $savePath = $uploadFolder . $fileName;
-
-                    if (move_uploaded_file($image['tmp_name'], $savePath)) {
-
-                        $imagePath = 'assets/images/' . $fileName;
-
-                        $_SESSION['upload_message'] = 'تم رفع الصورة بنجاح!';
-                        $_SESSION['uploaded_image'] = $imagePath;
-
-                    } else {
-                        $_SESSION['upload_message'] = 'حدث خطأ أثناء حفظ الصورة.';
-                    }
-
-                } else {
-                    $_SESSION['upload_message'] = 'يرجى اختيار صورة JPG أو PNG أو WEBP.';
-                }
-
-            } else {
-                $_SESSION['upload_message'] = 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت.';
-            }
-
-        } else {
-            $_SESSION['upload_message'] = 'حدث خطأ أثناء رفع الصورة.';
-        }
-
+    // If the file is too large, PHP gives an empty POST
+    if (empty($_POST)) {
+        $errors = ['حجم الصورة يجب ألا يتجاوز 5 ميجابايت.'];
     } else {
-        $_SESSION['upload_message'] = 'يرجى تعبئة جميع الحقول واختيار صورة.';
+        $errors = attachImage($target, $_FILES['image'] ?? null);
     }
 
-    // Redirect to prevent uploading again when refreshing
-    header('Location: upload_images.php');
-    exit;
+    if (count($errors) === 0) {
+        $_SESSION['upload_message'] = 'تم رفع الصورة وربطها، وهي تظهر الآن للأطفال في مكانها.';
+        header('Location: upload_images.php');
+        exit;
+    }
 }
 
-// Show message after redirect
-if (isset($_SESSION['upload_message'])) {
-    $message = $_SESSION['upload_message'];
-    unset($_SESSION['upload_message']);
-}
+$message = $_SESSION['upload_message'] ?? '';
+unset($_SESSION['upload_message']);
 
-// Show uploaded image after redirect
-if (isset($_SESSION['uploaded_image'])) {
-    $imagePath = $_SESSION['uploaded_image'];
-    unset($_SESSION['uploaded_image']);
-}
+$destinations = getAllDestinations();
 ?>
 
 <?php include 'views/header.php'; ?>
+<link rel="stylesheet" href="assets/css/quiz.css">
+
+<a href="admin_dashboard.php">← لوحة التحكم</a>
 
 <h1>رفع صور الوجهات والمعالم</h1>
 
-<p>يمكنك رفع صور جديدة للوجهات والمعالم الموجودة في رحلة.</p>
+<p class="admin-hint">صور أسئلة الاختبار وخياراتها تُرفع من صفحة إدارة الاختبارات.</p>
 
 <?php if ($message !== ''): ?>
-    <p><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></p>
+    <p class="quiz-feedback correct"><?= e($message) ?></p>
 <?php endif; ?>
 
-<form method="POST" action="upload_images.php" enctype="multipart/form-data">
+<?php if (count($errors) > 0): ?>
+    <div class="quiz-message">
+        <?php foreach ($errors as $error): ?>
+            <p>• <?= e($error) ?></p>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
-    <label>اختر الوجهة:</label>
-    <br>
+<form class="admin-form" method="POST" action="upload_images.php" enctype="multipart/form-data">
 
-    <select name="destination" required>
-        <option value="">اختر الوجهة</option>
-        <option value="الدرعية">الدرعية</option>
-        <option value="العلا">العلا</option>
-        <option value="جدة التاريخية">جدة التاريخية</option>
-        <option value="البحر الأحمر">البحر الأحمر</option>
+    <label>اختر الوجهة أو المعلم:</label>
+    <select name="target">
+        <option value="">اختر</option>
+        <?php foreach ($destinations as $id => $d): ?>
+            <option value="destination-<?= $id ?>" <?= $target === 'destination-' . $id ? 'selected' : '' ?>>الوجهة: <?= e($d['name']) ?></option>
+            <?php foreach ($d['landmarks'] as $l): ?>
+                <option value="landmark-<?= $l['landmarkID'] ?>" <?= $target === 'landmark-' . $l['landmarkID'] ? 'selected' : '' ?>>&nbsp;&nbsp;— المعلم: <?= e($l['name']) ?></option>
+            <?php endforeach; ?>
+        <?php endforeach; ?>
     </select>
 
-    <br><br>
+    <label>اختر صورة من جهازك (JPG أو PNG أو WEBP، حتى 5 ميجابايت):</label>
+    <input type="file" name="image" id="image" accept="image/jpeg,image/png,image/webp">
 
-    <label>اختر المعلم:</label>
-    <br>
+    <h2>معاينة الصورة قبل الحفظ</h2>
+    <img id="preview" class="admin-thumb" src="" alt="معاينة الصورة" style="display:none;">
 
-    <select name="landmark" required>
-        <option value="">اختر المعلم</option>
-        <option value="حي الطريف">حي الطريف</option>
-        <option value="الحجر">الحِجر</option>
-        <option value="بيت نصيف">بيت نصيف</option>
-    </select>
-
-    <br><br>
-
-    <label>اختر صورة من جهازك:</label>
-    <br>
-
-    <input type="file"
-           name="image"
-           id="image"
-           accept="image/jpeg,image/png,image/webp"
-           required>
-
-    <br><br>
-
-    <h2>عرض الصورة</h2>
-
-    <img id="preview"
-         src=""
-         alt="عرض الصورة"
-         style="display:none; max-width:300px; border-radius:15px;">
-
-    <br><br>
-
-    <button type="submit">رفع الصورة</button>
-
+    <button type="submit">حفظ الصورة</button>
 </form>
 
-<?php if ($imagePath !== ''): ?>
-
-    <h2>الصورة المرفوعة</h2>
-
-    <img src="<?= htmlspecialchars($imagePath, ENT_QUOTES, 'UTF-8') ?>"
-         alt="الصورة المرفوعة"
-         style="max-width:300px; border-radius:15px;">
-
-<?php endif; ?>
-
 <br>
-
 <a href="admin_dashboard.php">العودة إلى لوحة التحكم</a>
 
 <script>
-document.getElementById('image').addEventListener('change', function() {
+// Show the chosen image before saving it
+document.getElementById('image').addEventListener('change', function () {
+    var preview = document.getElementById('preview');
 
-    const file = this.files[0];
-    const preview = document.getElementById('preview');
-
-    if (file) {
-        preview.src = URL.createObjectURL(file);
+    if (this.files[0]) {
+        preview.src = URL.createObjectURL(this.files[0]);
         preview.style.display = 'block';
     } else {
-        preview.src = '';
         preview.style.display = 'none';
     }
-
 });
 </script>
 
