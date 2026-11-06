@@ -105,13 +105,9 @@ h2 > a[href*="journey=sea"] {
   background: #12a3b4;
 }
 
-h2 > a[href*="journey=land"]::before {
-  content: "🏜️ ";
-}
 
-h2 > a[href*="journey=sea"]::before {
-  content: "🌊 ";
-}
+
+
 
 h2 > a[href*="journey="]:hover {
   transform: scale(1.05);
@@ -307,4 +303,38 @@ form[action="login.php"] .account-option input[type="radio"] {
 
 .account-option:hover span {
   border-color: #239aaa;
+}
+
+/* ---------- a destination the child completed ---------- */
+main li .done-mark {
+  margin: 6px 0 0;
+  color: #1f6e4a;
+  font-weight: bold;
+}
+
+/* ---------- menu icons ---------- */
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+/* ---------- destination page images ---------- */
+.destination-image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 20px;
+  margin: 10px 0;
+}
+
+.landmark-thumb {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 16px;
 }

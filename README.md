@@ -4,9 +4,10 @@ An interactive, game-based website that teaches Saudi children aged 7–11
 about Saudi heritage, history, and natural attractions.
 
 Children choose between a land journey and a sea journey, explore
-destinations such as Diriyah, AlUla, Historic Jeddah, and the Red Sea,
-read short cultural content, ask an AI Cultural Guide, take visual
-quizzes, and collect points and badges in a personal Explorer Notebook.
+destinations (Diriyah, AlUla, Historic Jeddah, and the Red Sea), read short
+cultural content, ask an AI Cultural Guide, take visual heritage quizzes
+(shown to children as "challenges"), and collect points and badges in a
+personal Explorer Notebook.
 
 IT320 Practical Software Engineering — King Saud University
 College of Computer and Information Sciences
@@ -15,25 +16,33 @@ College of Computer and Information Sciences
 
 - HTML, CSS, JavaScript (presentation)
 - PHP (application logic)
-- MySQL (data) — not connected in Sprint 1
+- MySQL (data, through PDO)
+- Google Gemini API (AI Cultural Guide)
 
 ## Project structure
 
 rihla/
-├── index.php        Home page
-├── views/           Pages shown to the user
-├── logic/           Application logic
-├── data/            Data access
-└── assets/          CSS, JavaScript, and images
+├── index.php, destination.php, landmark.php, quiz.php ...   Pages
+├── views/       Header, footer, and the AI guide chat
+├── logic/       Application logic (managers)
+├── data/        Data access and the database connection (db.php)
+├── assets/      CSS and images
+└── rihla.sql    The database export
 
 ## Running the project locally
 
-1. Install XAMPP and start Apache.
-2. Copy the project folder into the `htdocs` directory.
-3. Open `http://localhost/rihla` in a browser.
+1. Install XAMPP or MAMP and start Apache and MySQL.
+2. Copy the `rihla` folder into the `htdocs` directory.
+3. In phpMyAdmin create a database named `rihla` with the collation
+   `utf8mb4_unicode_ci`, open the `Import` tab, choose `rihla.sql`, and run it.
+4. If your MySQL username or password is not `root`/`root`, change them at
+   the top of `data/db.php`.
+5. To use the AI Cultural Guide, put your Gemini API key in `logic/config.php`
+   (this file is not uploaded to GitHub).
+6. Open `http://localhost/rihla`.
 
-The database is not connected in this sprint, so the pages use
-fixed data defined in the `data/` folder.
+Test accounts: administrator `admin` / `admin123`, child `child` / `1234`.
+A child can also create a new explorer profile from the login page.
 
 ## Sprint 1
 
@@ -42,6 +51,14 @@ Explore destinations · Search for destinations and landmarks ·
 View destination and landmark content · Ask the AI Cultural Guide Chatbot ·
 Manage destinations and landmarks · Add and update cultural content ·
 Upload images
+
+## Sprint 2
+
+Create an explorer profile · View and edit the profile ·
+Complete heritage quizzes · Points and badges ·
+Save discoveries and progress in the Explorer Notebook · View the Explorer Notebook ·
+Add and update quiz questions · Update badges and quiz points ·
+Delete destinations, landmarks, content, quiz questions, and badges
 
 ## Team
 
