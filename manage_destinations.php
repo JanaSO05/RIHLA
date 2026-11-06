@@ -7,262 +7,260 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
-// The destinations come from the same place the children's pages read from
-require_once 'logic/journeys.php';
+require_once 'logic/content_admin.php';
 
-$destinations = getAllDestinations();
+$adminID = (int)($_SESSION['userID'] ?? 0);
+$errors  = [];
 
-$message   = '';
-$editIndex = -1;
-
+// the administrator pressed a button
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $_POST['action'] ?? '';
-    $index  = $_POST['index'] ?? '';
+    $id     = (int)($_POST['id'] ?? 0);
+    $done   = '';
 
-    $indexIsValid = ctype_digit((string)$index)
-        && isset($destinations[(int)$index]);
+    if ($action === 'save_destination') {
+        $errors = saveDestinationForm($id, $_POST, $_FILES, $adminID);
+        $done = $id > 0 ? 'تم حفظ تعديلات الوجهة.' : 'تم حفظ الوجهة كمسودة. انشرها لتظهر للأطفال.';
 
-    // Delete a destination
-    if ($action === 'delete') {
+    } elseif ($action === 'publish_destination') {
+        $error = publishDestination($id);
+        $errors = $error === '' ? [] : [$error];
+        $done = 'تم نشر الوجهة، وهي تظهر الآن للأطفال.';
 
-        if ($indexIsValid) {
-            unset($destinations[(int)$index]);
-            saveAllDestinations($destinations);
-            $message = 'تم حذف الوجهة بنجاح!';
-        }
+    } elseif ($action === 'hide_destination') {
+        hideDestination($id);
+        $done = 'تم إخفاء الوجهة عن الأطفال.';
 
-    // Hide a destination from children, or show it again
-    } elseif ($action === 'toggle') {
+    } elseif ($action === 'save_landmark') {
+        $errors = saveLandmarkForm($id, $_POST, $_FILES);
+        $done = $id > 0 ? 'تم حفظ تعديلات المعلم.' : 'تم حفظ المعلم كمسودة. انشره ليظهر للأطفال.';
 
-        if ($indexIsValid) {
+    } elseif ($action === 'publish_landmark') {
+        $error = publishLandmark($id);
+        $errors = $error === '' ? [] : [$error];
+        $done = 'تم نشر المعلم.';
 
-            $current = $destinations[(int)$index]['status'] ?? 'published';
+    } elseif ($action === 'hide_landmark') {
+        hideLandmark($id);
+        $done = 'تم إخفاء المعلم عن الأطفال.';
+    }
 
-            if ($current === 'published') {
-                $destinations[(int)$index]['status'] = 'hidden';
-                saveAllDestinations($destinations);
-                $message = 'تم إخفاء الوجهة عن الأطفال.';
-            } else {
-                $destinations[(int)$index]['status'] = 'published';
-                saveAllDestinations($destinations);
-                $message = 'تم إظهار الوجهة للأطفال.';
-            }
-        }
-
-    // Add a new destination or save an edited one
-    } elseif ($action === 'save') {
-
-        $name     = trim($_POST['destination_name'] ?? '');
-        $landmark = trim($_POST['landmark_name'] ?? '');
-        $journey  = $_POST['journey'] ?? 'land';
-
-        if (!array_key_exists($journey, getJourneys())) {
-            $journey = 'land';
-        }
-
-        if ($name !== '' && $landmark !== '') {
-
-            // Check for another destination with the same name
-            $exists = false;
-
-            foreach ($destinations as $i => $existingDestination) {
-                if ($existingDestination['name'] === $name) {
-                    if (!$indexIsValid || $i !== (int)$index) {
-                        $exists = true;
-                        break;
-                    }
-                }
-            }
-
-            if ($exists) {
-
-                $message = 'هذه الوجهة موجودة بالفعل!';
-
-            } elseif ($indexIsValid) {
-
-                // Edit: keep the description and the status as they are
-                $id = (int)$index;
-
-                $destinations[$id]['name']      = $name;
-                $destinations[$id]['journey']   = $journey;
-                $destinations[$id]['landmarks'] = [
-                    [
-                        'name' => $landmark,
-                        'desc' => $destinations[$id]['landmarks'][0]['desc'] ?? ''
-                    ]
-                ];
-
-                saveAllDestinations($destinations);
-                $message = 'تم تعديل الوجهة بنجاح!';
-
-            } else {
-
-                // Add: give the new destination the next free ID
-                $newId = $destinations
-                    ? max(array_keys($destinations)) + 1
-                    : 1;
-
-                $destinations[$newId] = [
-                    'name'      => $name,
-                    'desc'      => '',
-                    'journey'   => $journey,
-                    'status'    => 'published',
-                    'landmarks' => [
-                        [
-                            'name' => $landmark,
-                            'desc' => ''
-                        ]
-                    ]
-                ];
-
-                saveAllDestinations($destinations);
-                $message = 'تم إضافة الوجهة بنجاح!';
-            }
-
-        } else {
-            $message = 'يرجى تعبئة جميع الحقول.';
-        }
+    if (count($errors) === 0 && $done !== '') {
+        $_SESSION['destinations_message'] = $done;
+        header('Location: manage_destinations.php');
+        exit;
     }
 }
 
-// Select a destination to edit
-if (isset($_GET['edit']) && ctype_digit((string)$_GET['edit'])) {
+$message = $_SESSION['destinations_message'] ?? $_SESSION['delete_message'] ?? '';
+unset($_SESSION['destinations_message'], $_SESSION['delete_message']);
 
-    $requested = (int)$_GET['edit'];
+$destinations = getAllDestinations();
+$journeys     = getJourneys();
+$statusNames  = ['draft' => 'مسودة', 'published' => 'منشورة', 'hidden' => 'مخفية'];
 
-    if (isset($destinations[$requested])) {
-        $editIndex = $requested;
-    }
-}
+// The destination or landmark being edited
+$editDestinationID = (int)($_GET['edit_destination'] ?? 0);
+$editDestination   = $destinations[$editDestinationID] ?? null;
 
-$selected = $editIndex >= 0
-    ? $destinations[$editIndex]
-    : ['name' => '', 'journey' => 'land', 'landmarks' => [['name' => '']]];
+$editLandmarkID = (int)($_GET['edit_landmark'] ?? 0);
+$editLandmark   = $editLandmarkID > 0 ? findLandmarkByID($editLandmarkID) : null;
 
-$selectedName     = $selected['name'] ?? '';
-$selectedJourney  = $selected['journey'] ?? 'land';
-$selectedLandmark = $selected['landmarks'][0]['name'] ?? '';
+// The values shown in the destination form
+$destinationForm = [
+    'name'        => $_POST['name'] ?? ($editDestination['name'] ?? ''),
+    'description' => $_POST['description'] ?? ($editDestination['desc'] ?? ''),
+    'journey'     => $_POST['journey'] ?? ($editDestination['journey'] ?? 'land')
+];
+
+// The values shown in the landmark form
+$landmarkForm = [
+    'name'        => $_POST['name'] ?? ($editLandmark['name'] ?? ''),
+    'description' => $_POST['description'] ?? ($editLandmark['description'] ?? ''),
+    'destination' => $_POST['destination'] ?? ($editLandmark['destinationID'] ?? '')
+];
+
+$postedAction = $_POST['action'] ?? '';
 ?>
 
 <?php include 'views/header.php'; ?>
+<link rel="stylesheet" href="assets/css/quiz.css">
+
+<a href="admin_dashboard.php">← لوحة التحكم</a>
 
 <h1>إدارة الوجهات والمعالم</h1>
 
-<p>يمكنك إدارة الوجهات والمعالم الموجودة في رحلة.</p>
+<p class="admin-hint">الوجهة والمعلم الجديدان يُحفظان كمسودة، ولا يظهران للأطفال إلا بعد النشر.</p>
 
 <?php if ($message !== ''): ?>
-    <p><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></p>
+    <p class="quiz-feedback correct"><?= e($message) ?></p>
 <?php endif; ?>
 
-<h2>الوجهات الحالية</h2>
+<?php if (count($errors) > 0): ?>
+    <div class="quiz-message">
+        <p>لم يتم الحفظ:</p>
+        <?php foreach ($errors as $error): ?>
+            <p>• <?= e($error) ?></p>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
-<ul>
+<h2>الوجهات ومعالمها</h2>
 
-    <?php foreach ($destinations as $index => $destination): ?>
+<table class="admin-table">
+    <tr>
+        <th>الصورة</th>
+        <th>الاسم</th>
+        <th>الرحلة</th>
+        <th>الحالة</th>
+        <th></th>
+    </tr>
 
-        <?php
-            $status    = $destination['status'] ?? 'published';
-            $isHidden  = $status === 'hidden';
-            $journeys  = getJourneys();
-            $journeyAr = $journeys[$destination['journey']] ?? '';
-        ?>
+    <?php foreach ($destinations as $id => $d): ?>
 
-        <li>
+        <tr>
+            <td><?php if (imageExists($d['imagePath'])): ?><img class="admin-icon" src="<?= e($d['imagePath']) ?>" alt=""><?php endif; ?></td>
+            <td><strong><?= e($d['name']) ?></strong></td>
+            <td><?= e($journeys[$d['journey']] ?? '') ?></td>
+            <td><?= e($statusNames[$d['status']] ?? $d['status']) ?></td>
+            <td>
+                <a href="manage_destinations.php?edit_destination=<?= $id ?>#destination-form">تعديل</a> |
+                <form method="POST" action="manage_destinations.php" class="inline-form">
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <?php if ($d['status'] === 'published'): ?>
+                        <input type="hidden" name="action" value="hide_destination">
+                        <button type="submit">إخفاء</button>
+                    <?php else: ?>
+                        <input type="hidden" name="action" value="publish_destination">
+                        <button type="submit">نشر</button>
+                    <?php endif; ?>
+                </form>
+                | <a href="delete.php?type=destination&id=<?= $id ?>&back=manage_destinations.php">حذف</a>
+            </td>
+        </tr>
 
-            <h3>
-                <?= htmlspecialchars($destination['name'], ENT_QUOTES, 'UTF-8') ?>
-                <?php if ($isHidden): ?>
-                    (مخفية عن الأطفال)
-                <?php endif; ?>
-            </h3>
-
-            <p>
-                الرحلة: <?= htmlspecialchars($journeyAr, ENT_QUOTES, 'UTF-8') ?>
-            </p>
-
-            <p>
-                المعلم:
-                <?= htmlspecialchars($destination['landmarks'][0]['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
-            </p>
-
-            <!-- Edit button -->
-            <a href="manage_destinations.php?edit=<?= $index ?>">
-                <button type="button">تعديل</button>
-            </a>
-
-            <!-- Hide or show button -->
-            <form method="POST" action="manage_destinations.php" style="display:inline;">
-                <input type="hidden" name="action" value="toggle">
-                <input type="hidden" name="index" value="<?= $index ?>">
-                <button type="submit">
-                    <?= $isHidden ? 'إظهار للأطفال' : 'إخفاء عن الأطفال' ?>
-                </button>
-            </form>
-
-            <!-- Delete button -->
-            <form method="POST" action="manage_destinations.php" style="display:inline;">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="index" value="<?= $index ?>">
-                <button type="submit" onclick="return confirm('هل أنت متأكد من الحذف؟')">
-                    حذف
-                </button>
-            </form>
-
-        </li>
+        <?php foreach ($d['landmarks'] as $l): ?>
+            <tr>
+                <td><?php if (imageExists($l['imagePath'])): ?><img class="admin-icon" src="<?= e($l['imagePath']) ?>" alt=""><?php endif; ?></td>
+                <td>— <?= e($l['name']) ?> <small>(معلم)</small></td>
+                <td></td>
+                <td><?= e($statusNames[$l['status']] ?? $l['status']) ?></td>
+                <td>
+                    <a href="manage_destinations.php?edit_landmark=<?= $l['landmarkID'] ?>#landmark-form">تعديل</a> |
+                    <form method="POST" action="manage_destinations.php" class="inline-form">
+                        <input type="hidden" name="id" value="<?= $l['landmarkID'] ?>">
+                        <?php if ($l['status'] === 'published'): ?>
+                            <input type="hidden" name="action" value="hide_landmark">
+                            <button type="submit">إخفاء</button>
+                        <?php else: ?>
+                            <input type="hidden" name="action" value="publish_landmark">
+                            <button type="submit">نشر</button>
+                        <?php endif; ?>
+                    </form>
+                    | <a href="delete.php?type=landmark&id=<?= $l['landmarkID'] ?>&back=manage_destinations.php">حذف</a>
+                </td>
+            </tr>
+        <?php endforeach; ?>
 
     <?php endforeach; ?>
+</table>
 
-</ul>
+<!-- ---------- add or edit a destination ---------- -->
+<h2 id="destination-form"><?= $editDestination ? 'تعديل الوجهة' : 'إضافة وجهة جديدة' ?></h2>
 
-<h2><?= $editIndex >= 0 ? 'تعديل الوجهة' : 'إضافة وجهة جديدة' ?></h2>
+<form class="admin-form" method="POST" enctype="multipart/form-data"
+      action="manage_destinations.php<?= $editDestination ? '?edit_destination=' . $editDestinationID : '' ?>#destination-form">
 
-<form method="POST" action="manage_destinations.php">
+    <input type="hidden" name="action" value="save_destination">
+    <input type="hidden" name="id" value="<?= $editDestination ? $editDestinationID : 0 ?>">
 
-    <input type="hidden" name="action" value="save">
-    <input type="hidden" name="index" value="<?= $editIndex >= 0 ? $editIndex : '' ?>">
+    <?php $useForm = $postedAction === 'save_destination' || $editDestination; ?>
 
     <label>اسم الوجهة:</label>
-    <br>
-    <input type="text"
-           name="destination_name"
-           required
-           value="<?= htmlspecialchars($selectedName, ENT_QUOTES, 'UTF-8') ?>">
+    <input type="text" name="name" maxlength="50" value="<?= e($useForm ? $destinationForm['name'] : '') ?>">
 
-    <br><br>
+    <label>وصف قصير:</label>
+    <textarea name="description" rows="3"><?= e($useForm ? $destinationForm['description'] : '') ?></textarea>
 
     <label>الرحلة:</label>
-    <br>
     <select name="journey">
-        <?php foreach (getJourneys() as $key => $label): ?>
-            <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
-                <?= $selectedJourney === $key ? 'selected' : '' ?>>
-                <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
-            </option>
+        <?php foreach ($journeys as $key => $label): ?>
+            <option value="<?= $key ?>" <?= $destinationForm['journey'] === $key ? 'selected' : '' ?>><?= e($label) ?></option>
         <?php endforeach; ?>
     </select>
 
-    <br><br>
+    <label>صورة الوجهة (JPG أو PNG أو WEBP، حتى 5 ميجابايت)<?= $editDestination ? ' - اتركها فارغة لإبقاء الصورة الحالية' : '' ?>:</label>
+    <?php if ($editDestination && imageExists($editDestination['imagePath'])): ?>
+        <img class="admin-thumb" src="<?= e($editDestination['imagePath']) ?>" alt="الصورة الحالية">
+    <?php endif; ?>
+    <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+    <img class="admin-thumb image-preview" src="" alt="معاينة الصورة" style="display:none;">
 
-    <label>اسم المعلم:</label>
-    <br>
-    <input type="text"
-           name="landmark_name"
-           required
-           value="<?= htmlspecialchars($selectedLandmark, ENT_QUOTES, 'UTF-8') ?>">
-
-    <br><br>
-
-    <button type="submit"><?= $editIndex >= 0 ? 'حفظ التعديلات' : 'إضافة' ?></button>
-
-    <?php if ($editIndex >= 0): ?>
+    <button type="submit">حفظ الوجهة</button>
+    <?php if ($editDestination): ?>
         <a href="manage_destinations.php">إلغاء التعديل</a>
     <?php endif; ?>
+</form>
 
+<!-- ---------- add or edit a landmark ---------- -->
+<h2 id="landmark-form"><?= $editLandmark ? 'تعديل المعلم' : 'إضافة معلم جديد' ?></h2>
+
+<form class="admin-form" method="POST" enctype="multipart/form-data"
+      action="manage_destinations.php<?= $editLandmark ? '?edit_landmark=' . $editLandmarkID : '' ?>#landmark-form">
+
+    <input type="hidden" name="action" value="save_landmark">
+    <input type="hidden" name="id" value="<?= $editLandmark ? $editLandmarkID : 0 ?>">
+
+    <?php $useForm = $postedAction === 'save_landmark' || $editLandmark; ?>
+
+    <label>الوجهة التي يتبع لها المعلم:</label>
+    <select name="destination">
+        <option value="">اختر الوجهة</option>
+        <?php foreach ($destinations as $id => $d): ?>
+            <option value="<?= $id ?>" <?= $useForm && $landmarkForm['destination'] == $id ? 'selected' : '' ?>><?= e($d['name']) ?></option>
+        <?php endforeach; ?>
+    </select>
+
+    <label>اسم المعلم:</label>
+    <input type="text" name="name" maxlength="80" value="<?= e($useForm ? $landmarkForm['name'] : '') ?>">
+
+    <label>وصف قصير:</label>
+    <textarea name="description" rows="3"><?= e($useForm ? $landmarkForm['description'] : '') ?></textarea>
+
+    <label>صورة المعلم<?= $editLandmark ? ' - اتركها فارغة لإبقاء الصورة الحالية' : '' ?>:</label>
+    <?php if ($editLandmark && imageExists($editLandmark['imagePath'])): ?>
+        <img class="admin-thumb" src="<?= e($editLandmark['imagePath']) ?>" alt="الصورة الحالية">
+    <?php endif; ?>
+    <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+    <img class="admin-thumb image-preview" src="" alt="معاينة الصورة" style="display:none;">
+
+    <button type="submit">حفظ المعلم</button>
+    <?php if ($editLandmark): ?>
+        <a href="manage_destinations.php">إلغاء التعديل</a>
+    <?php endif; ?>
 </form>
 
 <br>
-
 <a href="admin_dashboard.php">العودة إلى لوحة التحكم</a>
+
+
+<script>
+// Show each chosen image before saving it
+var fileInputs = document.querySelectorAll('input[type=file]');
+
+for (var i = 0; i < fileInputs.length; i++) {
+    fileInputs[i].addEventListener('change', function () {
+        var preview = this.nextElementSibling;
+
+        if (this.files[0]) {
+            preview.src = URL.createObjectURL(this.files[0]);
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    });
+}
+</script>
 
 <?php include 'views/footer.php'; ?>
