@@ -7,200 +7,130 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
-// Temporary cultural content
-if (!isset($_SESSION['cultural_content'])) {
-    $_SESSION['cultural_content'] = [
-        [
-            'destination' => 'الدرعية',
-            'landmark' => 'حي الطريف',
-            'description' => 'حي الطريف موقع تاريخي في الدرعية، وكان مركزًا للدولة السعودية الأولى.'
-        ],
-        [
-            'destination' => 'العلا',
-            'landmark' => 'الحِجر',
-            'description' => 'الحِجر موقع أثري في العلا، ويشتهر بالمقابر المنحوتة في الصخور.'
-        ]
-    ];
-}
-// Remove existing duplicate content
-$uniqueContent = [];
+require_once 'logic/content_admin.php';
 
-foreach ($_SESSION['cultural_content'] as $content) {
+$adminID = (int)($_SESSION['userID'] ?? 0);
+$errors  = [];
 
-    $exists = false;
+$editID  = (int)($_GET['edit'] ?? 0);
+$editing = $editID > 0 ? findContentSection($editID) : null;
 
-    foreach ($uniqueContent as $existingContent) {
-
-        if ($existingContent['destination'] === $content['destination'] &&
-            $existingContent['landmark'] === $content['landmark']) {
-
-            $exists = true;
-            break;
-        }
-    }
-
-    if (!$exists) {
-        $uniqueContent[] = $content;
-    }
-}
-
-$_SESSION['cultural_content'] = $uniqueContent;
-$message = '';
-$editIndex = -1;
-
-// Add or update content
+// save the content
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $destination = trim($_POST['destination'] ?? '');
-    $landmark = trim($_POST['landmark'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $index = $_POST['index'] ?? '';
+    $errors = saveContentForm($editing ? $editID : 0, $_POST, $_FILES, $adminID);
 
-    if ($destination !== '' && $landmark !== '' && $description !== '') {
-
-        $isEditing = (
-            $index !== '' &&
-            ctype_digit((string)$index) &&
-            isset($_SESSION['cultural_content'][(int)$index])
-        );
-
-        // Check for duplicate content
-        $exists = false;
-
-        foreach ($_SESSION['cultural_content'] as $i => $existingContent) {
-
-            if ($existingContent['destination'] === $destination &&
-                $existingContent['landmark'] === $landmark) {
-
-                if (!$isEditing || $i !== (int)$index) {
-                    $exists = true;
-                    break;
-                }
-            }
-        }
-
-        if ($exists) {
-
-            $_SESSION['message'] = 'هذا المحتوى موجود بالفعل!';
-
-        } else {
-
-            $content = [
-                'destination' => $destination,
-                'landmark' => $landmark,
-                'description' => $description
-            ];
-
-            if ($isEditing) {
-
-                $_SESSION['cultural_content'][(int)$index] = $content;
-                $_SESSION['message'] = 'تم تعديل المحتوى بنجاح!';
-
-            } else {
-
-                $_SESSION['cultural_content'][] = $content;
-                $_SESSION['message'] = 'تم إضافة المحتوى بنجاح!';
-            }
-        }
-
-    } else {
-
-        $_SESSION['message'] = 'يرجى تعبئة جميع الحقول.';
-    }
-
-    // Redirect to prevent adding again when refreshing
-    header('Location: manage_content.php');
-    exit;
-}
-
-// Show message after redirect
-if (isset($_SESSION['message'])) {
-    $message = $_SESSION['message'];
-    unset($_SESSION['message']);
-}
-
-// Select content to edit
-if (isset($_GET['edit']) && ctype_digit((string)$_GET['edit'])) {
-
-    $requestedIndex = (int)$_GET['edit'];
-
-    if (isset($_SESSION['cultural_content'][$requestedIndex])) {
-        $editIndex = $requestedIndex;
+    if (count($errors) === 0) {
+        $_SESSION['content_message'] = $editing
+            ? 'تم تحديث المحتوى، ويظهر الآن للأطفال.'
+            : 'تم حفظ المحتوى، ويظهر الآن في صفحة المعلم.';
+        header('Location: manage_content.php');
+        exit;
     }
 }
 
-$selectedContent = $editIndex >= 0
-    ? $_SESSION['cultural_content'][$editIndex]
-    : ['destination' => '', 'landmark' => '', 'description' => ''];
+$message = $_SESSION['content_message'] ?? $_SESSION['delete_message'] ?? '';
+unset($_SESSION['content_message'], $_SESSION['delete_message']);
+
+$sections     = findAllContentSections();
+$destinations = getAllDestinations();
+
+// The values shown in the form: what was typed, or the saved section
+$form = [
+    'landmark' => $_POST['landmark'] ?? ($editing['landmarkID'] ?? ''),
+    'title'    => $_POST['title'] ?? ($editing['title'] ?? ''),
+    'text'     => $_POST['text'] ?? ($editing['text'] ?? ''),
+    'source'   => $_POST['source'] ?? ($editing['source'] ?? '')
+];
 ?>
 
 <?php include 'views/header.php'; ?>
+<link rel="stylesheet" href="assets/css/quiz.css">
+
+<a href="admin_dashboard.php">← لوحة التحكم</a>
 
 <h1>إدارة المحتوى الثقافي والتاريخي</h1>
 
-<p>يمكنك إضافة معلومات ثقافية وتاريخية جديدة أو تعديل المعلومات الموجودة.</p>
+<p class="admin-hint">كل قسم محتوى يتبع لمعلم، ونصه 80 كلمة كحد أعلى، ومعلوماته من مصدر رسمي. المرشد الثقافي يجيب من هذا المحتوى فقط.</p>
 
 <?php if ($message !== ''): ?>
-    <p><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></p>
+    <p class="quiz-feedback correct"><?= e($message) ?></p>
 <?php endif; ?>
 
 <h2>المحتوى الحالي</h2>
 
-<ul>
-    <?php foreach ($_SESSION['cultural_content'] as $index => $content): ?>
-        <li>
-            <h2><?= htmlspecialchars($content['destination'], ENT_QUOTES, 'UTF-8') ?></h2>
+<?php if (count($sections) === 0): ?>
+    <p>لا يوجد محتوى بعد.</p>
+<?php else: ?>
+    <table class="admin-table">
+        <tr>
+            <th>الوجهة / المعلم</th>
+            <th>العنوان</th>
+            <th>المصدر</th>
+            <th></th>
+        </tr>
+        <?php foreach ($sections as $s): ?>
+            <tr>
+                <td><?= e($s['destinationName']) ?> / <?= e($s['landmarkName']) ?></td>
+                <td><?= e($s['title']) ?></td>
+                <td><?= e($s['source']) ?></td>
+                <td>
+                    <a href="manage_content.php?edit=<?= (int)$s['sectionID'] ?>#content-form">تعديل</a> |
+                    <a href="delete.php?type=content&id=<?= (int)$s['sectionID'] ?>&back=manage_content.php">حذف</a>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    </table>
+<?php endif; ?>
 
-            <p>
-                <strong>المعلم:</strong>
-                <?= htmlspecialchars($content['landmark'], ENT_QUOTES, 'UTF-8') ?>
-            </p>
+<h2 id="content-form"><?= $editing ? 'تحديث المحتوى' : 'إضافة محتوى جديد' ?></h2>
 
-            <p><?= htmlspecialchars($content['description'], ENT_QUOTES, 'UTF-8') ?></p>
+<?php if (count($errors) > 0): ?>
+    <div class="quiz-message">
+        <p>لم يتم الحفظ<?= $editing ? '، وبقيت النسخة السابقة كما هي' : '' ?>:</p>
+        <?php foreach ($errors as $error): ?>
+            <p>• <?= e($error) ?></p>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
-            <a href="manage_content.php?edit=<?= $index ?>">تعديل المحتوى</a>
-        </li>
-    <?php endforeach; ?>
-</ul>
+<form class="admin-form" method="POST" enctype="multipart/form-data"
+      action="manage_content.php<?= $editing ? '?edit=' . $editID : '' ?>#content-form">
 
-<h2><?= $editIndex >= 0 ? 'تعديل المحتوى' : 'إضافة محتوى جديد' ?></h2>
+    <label>المعلم:</label>
+    <select name="landmark">
+        <option value="">اختر المعلم</option>
+        <?php foreach ($destinations as $d): ?>
+            <optgroup label="<?= e($d['name']) ?>">
+                <?php foreach ($d['landmarks'] as $l): ?>
+                    <option value="<?= $l['landmarkID'] ?>" <?= $form['landmark'] == $l['landmarkID'] ? 'selected' : '' ?>><?= e($l['name']) ?></option>
+                <?php endforeach; ?>
+            </optgroup>
+        <?php endforeach; ?>
+    </select>
 
-<form method="POST" action="manage_content.php">
+    <label>العنوان:</label>
+    <input type="text" name="title" maxlength="100" value="<?= e($form['title']) ?>">
 
-    <input type="hidden" name="index" value="<?= $editIndex >= 0 ? $editIndex : '' ?>">
+    <label>النص (80 كلمة كحد أعلى):</label>
+    <textarea name="text" rows="5"><?= e($form['text']) ?></textarea>
 
-    <label>اسم الوجهة:</label>
-    <br>
-    <input type="text" name="destination" required
-           value="<?= htmlspecialchars($selectedContent['destination'], ENT_QUOTES, 'UTF-8') ?>">
+    <label>المصدر الرسمي:</label>
+    <input type="text" name="source" maxlength="255" value="<?= e($form['source']) ?>">
 
-    <br><br>
-
-    <label>اسم المعلم:</label>
-    <br>
-    <input type="text" name="landmark" required
-           value="<?= htmlspecialchars($selectedContent['landmark'], ENT_QUOTES, 'UTF-8') ?>">
-
-    <br><br>
-
-    <label>المحتوى الثقافي والتاريخي:</label>
-    <br>
-    <textarea name="description" rows="5" cols="50" required><?= htmlspecialchars($selectedContent['description'], ENT_QUOTES, 'UTF-8') ?></textarea>
-
-    <br><br>
-
-    <button type="submit">
-        <?= $editIndex >= 0 ? 'حفظ التعديلات' : 'إضافة المحتوى' ?>
-    </button>
-
-    <?php if ($editIndex >= 0): ?>
-        <a href="manage_content.php">إلغاء التعديل</a>
+    <label>صورة (اختيارية، JPG أو PNG أو WEBP حتى 5 ميجابايت):</label>
+    <?php if ($editing && imageExists($editing['imagePath'])): ?>
+        <img class="admin-thumb" src="<?= e($editing['imagePath']) ?>" alt="الصورة الحالية">
     <?php endif; ?>
+    <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
 
+    <button type="submit"><?= $editing ? 'حفظ التحديث' : 'حفظ المحتوى' ?></button>
+    <?php if ($editing): ?>
+        <a href="manage_content.php">إلغاء</a>
+    <?php endif; ?>
 </form>
 
 <br>
-
 <a href="admin_dashboard.php">العودة إلى لوحة التحكم</a>
 
 <?php include 'views/footer.php'; ?>
