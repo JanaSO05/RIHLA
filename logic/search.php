@@ -56,7 +56,7 @@ function searchByName($term) {
                 $results[] = [
                     'name' => $landmark['name'],
                     'type' => 'معلم',
-                    'link' => 'destination.php?id=' . $id
+                    'link' => 'landmark.php?id=' . $landmark['landmarkID']
                 ];
             }
         }

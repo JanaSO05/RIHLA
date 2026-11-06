@@ -11,10 +11,17 @@ if (session_status() === PHP_SESSION_NONE) {
 $role = $_SESSION['role'] ?? '';
 
 // Check if we are on the login page
-$isLoginPage = basename($_SERVER['PHP_SELF']) === 'login.php';
+$isLoginPage = in_array(basename($_SERVER['PHP_SELF']), ['login.php', 'register.php'], true);
 
 // Check which interface the admin selected
 $isAdminView = $role === 'admin' && ($_SESSION['view'] ?? 'admin') === 'admin';
+
+// The name and avatar of the child who is logged in, shown on every page
+$headerExplorer = null;
+if ($role === 'child' && isset($_SESSION['userID'])) {
+    require_once __DIR__ . '/../logic/explorer.php';
+    $headerExplorer = findExplorer((int)$_SESSION['userID']);
+}
 ?>
 
 <!DOCTYPE html>
@@ -54,21 +61,26 @@ $isAdminView = $role === 'admin' && ($_SESSION['view'] ?? 'admin') === 'admin';
 
             <?php if ($isAdminView): ?>
 
-                <a href="admin_dashboard.php">الرئيسية</a> |
-                <a href="logout.php">تسجيل الخروج</a>
+                <a href="admin_dashboard.php"><img class="nav-icon" src="assets/images/icons/home.png" alt="">الرئيسية</a> |
+                <a href="logout.php"><img class="nav-icon" src="assets/images/icons/logout.png" alt="">خروج</a>
 
             <?php else: ?>
 
-                <a href="index.php">الرئيسية</a> |
-                <a href="search.php">البحث</a> |
+                <a href="index.php"><img class="nav-icon" src="assets/images/icons/home.png" alt="">الرئيسية</a> |
+                <a href="search.php"><img class="nav-icon" src="assets/images/icons/search.png" alt="">البحث</a> |
+
+                <?php if ($headerExplorer !== null): ?>
+                    <a href="notebook.php"><img class="nav-icon" src="assets/images/icons/notebook.png" alt="">دفتري</a> |
+                    <a href="profile.php"><img class="nav-icon" src="assets/images/icons/profile.png" alt="">ملفي</a> |
+                <?php endif; ?>
 
                 <?php if ($role === 'child' || $role === 'admin'): ?>
 
-                    <a href="logout.php">تسجيل الخروج</a>
+                    <a href="logout.php"><img class="nav-icon" src="assets/images/icons/logout.png" alt="">خروج</a>
 
                 <?php else: ?>
 
-                    <a href="login.php">تسجيل الدخول</a>
+                    <a href="login.php"><img class="nav-icon" src="assets/images/icons/login.png" alt="">دخول</a>
 
                 <?php endif; ?>
 
@@ -76,6 +88,14 @@ $isAdminView = $role === 'admin' && ($_SESSION['view'] ?? 'admin') === 'admin';
 
         </nav>
 
+    <?php endif; ?>
+
+    <?php if ($headerExplorer !== null): ?>
+        <a class="header-explorer" href="profile.php"
+           style="display:flex;align-items:center;gap:8px;text-decoration:none;font-weight:bold;color:#4a3420;">
+            <img src="<?= e(avatarPath($headerExplorer['avatar'])) ?>" alt="" style="width:42px;height:42px;border-radius:50%;">
+            <?= e($headerExplorer['displayName']) ?>
+        </a>
     <?php endif; ?>
 
 </header>

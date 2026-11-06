@@ -4,12 +4,12 @@
 require_once __DIR__ . '/journeys.php';
 require_once __DIR__ . '/config.php';
 
-// Get the content of the destination and its landmarks
+// The published content the guide answers from (0 = all destinations)
 function getGuideSections($destinationID) {
 
     $sections = [];
 
-    foreach (getAllDestinations() as $id => $destination) {
+    foreach (getVisibleDestinations() as $id => $destination) {
 
         if ($destinationID == 0 || $destinationID == $id) {
 
@@ -17,6 +17,10 @@ function getGuideSections($destinationID) {
 
             foreach ($destination['landmarks'] as $landmark) {
                 $sections[] = $landmark['name'] . ': ' . $landmark['desc'];
+            }
+
+            foreach (findGuideSections($id) as $section) {
+                $sections[] = $section['title'] . ': ' . $section['text'];
             }
         }
     }

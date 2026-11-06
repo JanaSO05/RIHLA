@@ -1,63 +1,64 @@
 <?php
 
-// The journey manager. It asks the data layer for the destinations and
-// never reads the file itself.
+// Journeys and the destinations children can see
 require_once __DIR__ . '/../data/destinations.php';
 
 // Available journeys
 function getJourneys() {
     return [
         'land' => 'رحلة البر',
-        'sea' => 'رحلة البحر'
+        'sea'  => 'رحلة البحر'
     ];
 }
 
-// All destinations, including the hidden ones.
-// The administrator pages use this one.
+// All destinations, also draft and hidden (for the admin pages)
 function getAllDestinations() {
     return readDestinations();
 }
 
-// Save the destinations after the administrator changes them
-function saveAllDestinations($destinations) {
-    writeDestinations($destinations);
-}
-
-// Only the destinations that children are allowed to see.
-// A hidden destination stays in the data but is not returned here.
+// Only published destinations with their published landmarks
 function getVisibleDestinations() {
 
-    return array_filter(
-        getAllDestinations(),
-        function ($destination) {
-            return ($destination['status'] ?? 'published') === 'published';
+    $visible = [];
+
+    foreach (getAllDestinations() as $id => $destination) {
+
+        if ($destination['status'] !== 'published') {
+            continue;
         }
-    );
+
+        $landmarks = [];
+        foreach ($destination['landmarks'] as $landmark) {
+            if ($landmark['status'] === 'published') {
+                $landmarks[] = $landmark;
+            }
+        }
+
+        $destination['landmarks'] = $landmarks;
+        $visible[$id] = $destination;
+    }
+
+    return $visible;
 }
 
-// Get the visible destinations of one journey
+// The visible destinations of one journey
 function getDestinationsByJourney($journeyKey) {
 
-    return array_filter(
-        getVisibleDestinations(),
-        function ($destination) use ($journeyKey) {
-            return $destination['journey'] === $journeyKey;
+    $list = [];
+
+    foreach (getVisibleDestinations() as $id => $destination) {
+        if ($destination['journey'] === $journeyKey) {
+            $list[$id] = $destination;
         }
-    );
+    }
+
+    return $list;
 }
 
-// Get one visible destination by ID
+// One visible destination by ID, or null
 function getDestination($id) {
 
     $destinations = getVisibleDestinations();
 
     return $destinations[$id] ?? null;
-}
-
-// Get the landmarks of a destination
-function getLandmarks($destinationId) {
-
-    $destination = getDestination($destinationId);
-
-    return $destination['landmarks'] ?? [];
 }
