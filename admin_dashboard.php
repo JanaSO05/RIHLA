@@ -28,6 +28,18 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <li>
         <a href="upload_images.php">رفع الصور</a>
     </li>
+
+    <li>
+        <a href="manage_quizzes.php">إدارة الاختبارات</a>
+    </li>
+
+    <li>
+        <a href="manage_rewards.php">إدارة النقاط والأوسمة</a>
+    </li>
+
+    <li>
+        <a href="delete_items.php">حذف العناصر</a>
+    </li>
 </ul>
 
 <?php include 'views/footer.php'; ?>
