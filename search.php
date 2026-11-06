@@ -1,4 +1,12 @@
 <?php
+session_start();
+
+// Only logged-in users can open this page
+if (!isset($_SESSION['role'])) {
+    header('Location: login.php');
+    exit;
+}
+
 require_once 'logic/search.php';
 
 $term    = $_GET['q'] ?? '';
@@ -12,7 +20,7 @@ $results = searchByName($term);
 <h1>البحث</h1>
 
 <form method="get" action="search.php">
-  <input type="text" name="q" value="<?= htmlspecialchars($term) ?>" placeholder="اكتب اسم وجهة أو معلم">
+  <input type="text" name="q" value="<?= e($term) ?>" placeholder="اكتب اسم وجهة أو معلم">
   <button type="submit">ابحث</button>
 </form>
 
@@ -24,8 +32,8 @@ $results = searchByName($term);
     <ul>
       <?php foreach ($results as $r): ?>
         <li>
-          <a href="<?= $r['link'] ?>"><?= $r['name'] ?></a>
-          <small>(<?= $r['type'] ?>)</small>
+          <a href="<?= e($r['link']) ?>"><?= e($r['name']) ?></a>
+          <small>(<?= e($r['type']) ?>)</small>
         </li>
       <?php endforeach; ?>
     </ul>
