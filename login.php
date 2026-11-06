@@ -1,53 +1,25 @@
 <?php
 session_start();
 
+require_once __DIR__ . '/logic/explorer.php';
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $role = $_POST['role'] ?? 'child';
+    $role = ($_POST['role'] ?? 'child') === 'admin' ? 'admin' : 'child';
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    // Child login
-    if ($role === 'child' && $username === 'child' && $password === '1234') {
+    // The username and the hashed password are checked in the database
+    $result = logIn($role, $username, $password);
 
-        session_regenerate_id(true);
-
-        $_SESSION['username'] = $username;
-        $_SESSION['role'] = 'child';
-        $_SESSION['view'] = 'child';
-
-        header('Location: index.php');
+    if ($result['error'] === '') {
+        header('Location: ' . $result['page']);
         exit;
-
-    // Administrator login
-    } elseif ($role === 'admin' && $username === 'admin' && $password === 'admin123') {
-
-        session_regenerate_id(true);
-
-        $_SESSION['username'] = $username;
-        $_SESSION['role'] = 'admin';
-        $_SESSION['view'] = 'admin';
-
-        header('Location: admin_dashboard.php');
-        exit;
-
-    // Administrator accessing the child interface
-    } elseif ($role === 'child' && $username === 'admin' && $password === 'admin123') {
-
-        session_regenerate_id(true);
-
-        $_SESSION['username'] = $username;
-        $_SESSION['role'] = 'admin';
-        $_SESSION['view'] = 'child';
-
-        header('Location: index.php');
-        exit;
-
-    } else {
-        $error = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
     }
+
+    $error = $result['error'];
 }
 
 $selectedRole = $_POST['role'] ?? 'child';
@@ -104,6 +76,8 @@ $selectedRole = $_POST['role'] ?? 'child';
     <br><br>
 
     <button type="submit">تسجيل الدخول</button>
+
+    <p style="text-align:center;">ليس لديك حساب؟ <a href="register.php">أنشئ ملف المستكشف</a></p>
 
 </form>
 
