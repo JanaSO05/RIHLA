@@ -1,0 +1,4 @@
+# Block the browser from opening secret files like .env
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>

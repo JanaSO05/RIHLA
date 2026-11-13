@@ -50,7 +50,13 @@ function callAIService($prompt) {
 
     global $AI_API_KEY, $AI_MODEL, $AI_TIME_LIMIT;
 
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $AI_MODEL . ':generateContent?key=' . $AI_API_KEY;
+    // no key, so the guide cannot work
+    if ($AI_API_KEY == '') {
+        return null;
+    }
+
+    // the key is sent in a header (not in the URL) so it does not appear in logs
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $AI_MODEL . ':generateContent';
 
     $request = [
         'contents' => [
@@ -60,7 +66,7 @@ function callAIService($prompt) {
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'x-goog-api-key: ' . $AI_API_KEY]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, $AI_TIME_LIMIT);

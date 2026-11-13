@@ -1,5 +1,5 @@
-# the AI API key must not be uploaded to GitHub
-logic/config.php
+# secrets (the AI API key) must never be uploaded to GitHub
+.env
 nbproject/
 .DS_Store
 __MACOSX/

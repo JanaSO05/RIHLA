@@ -37,8 +37,12 @@ rihla/
    `utf8mb4_unicode_ci`, open the `Import` tab, choose `rihla.sql`, and run it.
 4. If your MySQL username or password is not `root`/`root`, change them at
    the top of `data/db.php`.
-5. To use the AI Cultural Guide, put your Gemini API key in `logic/config.php`
-   (this file is not uploaded to GitHub).
+5. To use the AI Cultural Guide, copy `.env.example` to a new file named `.env`
+   in the project folder and put your Gemini API key in it:
+   `AI_API_KEY=your-key-here`.
+   The `.env` file is excluded from GitHub by `.gitignore`, and `.htaccess`
+   blocks it from being opened in the browser. Never write the key in the code
+   or in the report.
 6. Open `http://localhost/rihla`.
 
 Test accounts: administrator `admin` / `admin123`, child `child` / `1234`.
